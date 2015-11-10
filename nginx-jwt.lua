@@ -1,7 +1,27 @@
 local jwt = require "resty.jwt"
 local cjson = require "cjson"
 local basexx = require "basexx"
+
+local logToken = os.getenv("LOG_TOKEN")
+if logToken == nil then
+    logToken = false
+else
+    logToken = string.lower(logToken)
+    if logToken == "true" or logToken == "1" then
+        logToken = true
+    else
+        logToken = false
+    end
+end
+
 local secret = os.getenv("JWT_SECRET")
+
+local authHeader = os.getenv("AUTHORIZATION_HEADER")
+if authHeader == "" or authHeader == nil then
+    authHeader = "Authorization"
+end
+
+local authTokenPrefix = os.getenv("AUTHORIZATION_PREFIX")
 
 assert(secret ~= nil, "Environment variable JWT_SECRET not set")
 
@@ -22,26 +42,37 @@ end
 
 local M = {}
 
-function M.auth(claim_specs)
+function M.auth(claim_specs, header_specs)
+
     -- require Authorization request header
-    local auth_header = ngx.var.http_Authorization
+    local auth_header = ngx.var[authHeader]
 
     if auth_header == nil then
         ngx.log(ngx.WARN, "No Authorization header")
         ngx.exit(ngx.HTTP_UNAUTHORIZED)
     end
 
-    ngx.log(ngx.INFO, "Authorization: " .. auth_header)
+    if (log_token ~= false) then
+        ngx.log(ngx.INFO, "Authorization: " .. auth_header)
+    end
 
     -- require Bearer token
-    local _, _, token = string.find(auth_header, "Bearer%s+(.+)")
+    local token;
+    if authTokenPrefix ~= nil then
+        local _
+        _, _, token = string.find(auth_header, authTokenPrefix .. "%s+(.+)")
+    else
+        token = auth_header
+    end
 
     if token == nil then
         ngx.log(ngx.WARN, "Missing token")
         ngx.exit(ngx.HTTP_UNAUTHORIZED)
     end
 
-    ngx.log(ngx.INFO, "Token: " .. token)
+    if (logToken ~= false) then
+        ngx.log(ngx.INFO, "Token: " .. token)
+    end
 
     -- require valid JWT
     local jwt_obj = jwt:verify(secret, token, 0)
@@ -50,11 +81,12 @@ function M.auth(claim_specs)
         ngx.exit(ngx.HTTP_UNAUTHORIZED)
     end
 
-    ngx.log(ngx.INFO, "JWT: " .. cjson.encode(jwt_obj))
+    if (logToken ~= false) then
+        ngx.log(ngx.INFO, "JWT: " .. cjson.encode(jwt_obj))
+    end
 
     -- optionally require specific claims
     if claim_specs ~= nil then
-        --TODO: test
         -- make sure they passed a Table
         if type(claim_specs) ~= 'table' then
             ngx.log(ngx.STDERR, "Configuration error: claim_specs arg must be a table")
@@ -63,6 +95,7 @@ function M.auth(claim_specs)
 
         -- process each claim
         local blocking_claim = ""
+        local spec_actions
         for claim, spec in pairs(claim_specs) do
             -- make sure token actually contains the claim
             local claim_value = jwt_obj.payload[claim]
@@ -71,7 +104,7 @@ function M.auth(claim_specs)
                 break
             end
 
-            local spec_actions = {
+            spec_actions = spec_actions or {
                 -- claim spec is a string (pattern)
                 ["string"] = function (pattern, val)
                     return string.match(val, pattern) ~= nil
@@ -91,9 +124,8 @@ function M.auth(claim_specs)
             local spec_action = spec_actions[type(spec)]
 
             -- make sure claim spec is a supported type
-            -- TODO: test
             if spec_action == nil then
-                ngx.log(ngx.STDERR, "Configuration error: claim_specs arg claim '" .. claim .. "' must be a string or a table")
+                ngx.log(ngx.STDERR, "Configuration error: claim_specs arg claim '" .. claim .. "' must be a string or a function")
                 ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
             end
 
@@ -110,8 +142,58 @@ function M.auth(claim_specs)
         end
     end
 
-    -- write the X-Auth-UserId header
-    ngx.header["X-Auth-UserId"] = jwt_obj.payload.sub
+    -- optionally add specific headers
+    if header_specs ~= nil then
+        -- make sure they passed a Table
+        if type(header_specs) ~= 'table' then
+            ngx.log(ngx.STDERR, "Configuration error: header_specs arg must be a table")
+            ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+        end
+
+        local blocking_claim = ""
+        local spec_actions
+        for claim, spec in pairs(header_specs) do
+            -- make sure token actually contains the claim
+            local claim_value = jwt_obj.payload[claim]
+            if claim_value == nil then
+                blocking_claim = claim .. " (missing)"
+                break
+            end
+
+            spec_actions = spec_actions or {
+                -- claim spec is a string
+                ["string"] = function (header, val)
+                    return header;
+                end,
+
+                -- claim spec is a predicate function
+                ["function"] = function (func, val)
+                    return func(val)
+                end
+            }
+
+            local spec_action = spec_actions[type(spec)]
+
+            -- make sure claim spec is a supported type
+            if spec_action == nil then
+                ngx.log(ngx.STDERR, "Configuration error: header_specs arg header '" .. claim .. "' must be a string or a function")
+                ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+            end
+
+            -- make sure token claim value satisfies the claim spec
+            local header = spec_action(spec, claim_value)
+            if not header then
+                blocking_claim = claim
+                break
+            end
+            ngx.header[header] = claim_value
+        end
+
+        if blocking_claim ~= "" then
+            ngx.log(ngx.WARN, "User did not satisfy claim: ".. blocking_claim)
+            ngx.exit(ngx.HTTP_UNAUTHORIZED)
+        end
+    end
 end
 
 function M.table_contains(table, item)
