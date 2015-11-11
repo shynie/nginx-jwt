@@ -138,13 +138,15 @@ The `jwt.auth()` function used above can actually do a lot more. See the [API Re
 
 ### auth
 
-Syntax: `auth([claim_specs])`
+Syntax: `auth([claim_specs, header_specs])`
 
 Authenticates the current request, requiring a JWT bearer token in the `Authorization` request header.  Verification uses the value set in the `JWT_SECRET` (and optionally `JWT_SECRET_IS_BASE64_ENCODED`) environment variables.
 
+To log the JWT tokens in your log files (not recommended for production), you set the `LOG_TOKEN` environment variable to `false`
+
 If authentication succeeds, then by default the current request is authorized by virtue of a valid user identity.  More specific authorization can be accomplished via the optional `claim_specs` parameter.  If provided, it must be a Lua [Table](http://www.lua.org/pil/2.5.html) where each key is the name of a desired claim and each value is a [pattern](http://www.lua.org/pil/20.2.html) that can be used to test the actual value of the claim.  If your claim value is more complex that what a pattern can handle, you can pass an anonymous function instead that has the signature `function (val)` and returns a truthy value (or just `true`) if `val` is a match.  You can also use the [`table_contains`](#table_contains) helper function to easily check for an existing value in an array table.
 
-For example if we wanted to ensure that the JWT had an `aud` (Audience) claim value that started with `foo:` and a `roles` claim that contained a `marketing` role, then the `claim_specs` parameter might look like this:
+For example, if we wanted to ensure that the JWT had an `aud` (Audience) claim value that started with `foo:` and a `roles` claim that contained a `marketing` role, then the `claim_specs` parameter might look like this:
 
 ```lua
 # nginx.conf:
@@ -163,7 +165,7 @@ server {
     }
 }
 ```
-and if our JWT's payload of claims looked something like this, the above `auth()` call would succeed:
+and if our JWT's payload of claims looked something like this, the above `auth(claim_specs)` call would succeed:
 
 ```json
 {
@@ -174,6 +176,38 @@ and if our JWT's payload of claims looked something like this, the above `auth()
 
 **NOTE:** the **auth** function should be called within the [access_by_lua](https://github.com/openresty/lua-nginx-module#access_by_lua) or [access_by_lua_file](https://github.com/openresty/lua-nginx-module#access_by_lua_file) directive so that it can occur before the Nginx **content** [phase](http://wiki.nginx.org/Phases).
 
+If we wanted to change the Authentication request header to something application specific we can set the `AUTHORIZATION_HEADER` (defaults to `Authorization`) and optionally the `AUTHORIZATION_PREFIX` (defaults to `Bearer`). Specifying the `AUTHORIZATION_PREFIX` to "" will disable the prefix, whilst any other value with look for `AUTHORIZATION_HEADER: AUTHORIZATION_PREFIX token`.
+
+If we wanted to add headers to our upstream request, we can specify the `header_specs`. If provided, it must be a Lua [Table](http://www.lua.org/pil/2.5.html) where each key is the name of a desired claim and each value is either a Lua String which is the exact value of the Header (and requires that the claim not be nil) or an anonymous function that has the signature `function (val)` and returns either Lua String as the header value, a nil to indicate a blocking failure claim, or a Lua String as the header value that is prefixed with `~` to indicate it's optional and should be cleared before sending upstream.
+
+For example, if we wanted to ensure that the upstream request had the `X-Auth-UserID` header with the `sub` claim (requiring the `sub` claim to not be nil), then the `header_specs` paramater might look like this:
+
+```lua
+# nginx.conf:
+
+server {
+    location /secure {
+        access_by_lua '
+            local jwt = require("nginx-jwt")
+            jwt.auth(nil, {
+                sub="X-Auth-UserID"
+            })
+        ';
+
+        proxy_pass http://my-backend.com$uri;
+    }
+}
+```
+and if our JWT's payload of claims looked something like this, the above `auth(nil, header_specs)` call would succeed:
+
+```json
+{
+    "sub": "foo-user",
+}
+```
+
+To make this header optional, you can utilize the `make_optional_header` function which returns an anonymous function to the above optional guidelines.
+
 ### table_contains
 
 Syntax: `table_contains(table, item)`
@@ -183,6 +217,17 @@ A helper function that checks to see if `table` (a Lua [Table](http://www.lua.or
 ```lua
 array = { "foo", "bar" }
 table_contains(array, "foo") --> true
+```
+
+
+### make_optional_header
+
+Syntax: `make_optional_header(header)`
+
+A helper function that returns an anonymous function that will return the header if the claim value is not nil, otherwise ignore.
+
+```lua
+make_optional_header("X-Auth-UserId") --> if claim ~= nil then "X-Auth-UserId" else "~X-Auth-UserId" 
 ```
 
 ## Tests

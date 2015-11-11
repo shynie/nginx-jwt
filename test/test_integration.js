@@ -234,7 +234,7 @@ describe('proxy', function () {
         });
     });
 
-    describe("configured with claim_specs param that contains a spec that's not a pattern (string) or table", function () {
+    describe("configured with claim_specs param that contains a spec that's not a pattern (string) or function", function () {
         before(function (done) {
             secret = 'JWTs are the best!';
 

@@ -22,6 +22,9 @@ if authHeader == "" or authHeader == nil then
 end
 
 local authTokenPrefix = os.getenv("AUTHORIZATION_PREFIX")
+if authTokenPrefix == nil then
+    authTokenPrefix = "Bearer"
+end
 
 assert(secret ~= nil, "Environment variable JWT_SECRET not set")
 
@@ -45,7 +48,8 @@ local M = {}
 function M.auth(claim_specs, header_specs)
 
     -- require Authorization request header
-    local auth_header = ngx.var[authHeader]
+    ngx.log(ngx.INFO, "authorization header: " .. authHeader)
+    local auth_header = ngx.req.get_headers()[authHeader]
 
     if auth_header == nil then
         ngx.log(ngx.WARN, "No Authorization header")
@@ -89,7 +93,7 @@ function M.auth(claim_specs, header_specs)
     if claim_specs ~= nil then
         -- make sure they passed a Table
         if type(claim_specs) ~= 'table' then
-            ngx.log(ngx.STDERR, "Configuration error: claim_specs arg must be a table")
+            ngx.log(ngx.STDERR, "Configuration error: claim_specs arg must be a table: " .. claim_specs)
             ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
         end
 
@@ -153,12 +157,7 @@ function M.auth(claim_specs, header_specs)
         local blocking_claim = ""
         local spec_actions
         for claim, spec in pairs(header_specs) do
-            -- make sure token actually contains the claim
             local claim_value = jwt_obj.payload[claim]
-            if claim_value == nil then
-                blocking_claim = claim .. " (missing)"
-                break
-            end
 
             spec_actions = spec_actions or {
                 -- claim spec is a string
@@ -176,17 +175,20 @@ function M.auth(claim_specs, header_specs)
 
             -- make sure claim spec is a supported type
             if spec_action == nil then
-                ngx.log(ngx.STDERR, "Configuration error: header_specs arg header '" .. claim .. "' must be a string or a function")
+                ngx.log(ngx.STDERR, "Configuration error: header_specs arg claim '" .. claim .. "' must be a string or a function")
                 ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
             end
 
             -- make sure token claim value satisfies the claim spec
             local header = spec_action(spec, claim_value)
-            if not header then
-                blocking_claim = claim
-                break
+            if header ~= nil and string.sub(header, 1, 1) == "~" then
+                -- optional header if empty string, ignore
+                ngx.req.clear_header(strinb.sub(header, 2))
+            elseif header == nil or (header ~= nil and claim_value == nil) then
+                blocking_claim = claim .. " (missing)"
+            else
+                ngx.req.set_header(header, claim_value)
             end
-            ngx.header[header] = claim_value
         end
 
         if blocking_claim ~= "" then
@@ -201,6 +203,16 @@ function M.table_contains(table, item)
         if value == item then return true end
     end
     return false
+end
+
+function M.make_optional_header(header)
+    return function (val)
+        if val ~= nil then
+            return header
+        else
+            return "~" .. header
+        end
+    end
 end
 
 return M
