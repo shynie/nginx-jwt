@@ -48,7 +48,6 @@ local M = {}
 function M.auth(claim_specs, header_specs)
 
     -- require Authorization request header
-    ngx.log(ngx.INFO, "authorization header: " .. authHeader)
     local auth_header = ngx.req.get_headers()[authHeader]
 
     if auth_header == nil then
@@ -93,7 +92,7 @@ function M.auth(claim_specs, header_specs)
     if claim_specs ~= nil then
         -- make sure they passed a Table
         if type(claim_specs) ~= 'table' then
-            ngx.log(ngx.STDERR, "Configuration error: claim_specs arg must be a table: " .. claim_specs)
+            ngx.log(ngx.STDERR, "Configuration error: claim_specs arg must be a table")
             ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
         end
 
