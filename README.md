@@ -393,24 +393,24 @@ The proxy base Docker image may need to be updated periodically, usually to just
 
 ## Packaging
 
+If you generally just want to create a tarball of this package us the following command:
+
+  ```bash
+  ./build package
+  ```
+
 When a new version of the script needs to be released, the following should be done:
 
 > **NOTE**: These steps can only performed by GitHub users with commit access to the project.
 
 1. Increment the [Semver](http://semver.org/) version in the [`version.txt`](version.txt) file as needed.
-1. Create a new git tag with the same version value (prefiexed with `v`):
+1. Run the make_release.sh script with the release message:
 
   ```bash
-  git tag v$(cat version.txt)
+  ./make_release.sh "Fancy new feature"
   ```
 
-1. Push the tag to GitHub.
-1. Create a new GitHub release in [releases](releases) that's associated with the above tag.
-1. Run the following command to create a release package archive and then upload it to the release created above:  
-
-  ```bash
-  ./build package
-  ```
+1. Publish the draft release with the provided link in the script output if everything looks good.
 
 ## Issue Reporting
 
