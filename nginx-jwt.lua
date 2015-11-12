@@ -182,7 +182,7 @@ function M.auth(claim_specs, header_specs)
             local header = spec_action(spec, claim_value)
             if header ~= nil and string.sub(header, 1, 1) == "~" then
                 -- optional header if empty string, ignore
-                ngx.req.clear_header(strinb.sub(header, 2))
+                ngx.req.clear_header(string.sub(header, 2))
             elseif header == nil or (header ~= nil and claim_value == nil) then
                 blocking_claim = claim .. " (missing)"
             else
