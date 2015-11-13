@@ -55,7 +55,7 @@ function M.auth(claim_specs, header_specs)
         ngx.exit(ngx.HTTP_UNAUTHORIZED)
     end
 
-    if (log_token ~= false) then
+    if (logToken ~= false) then
         ngx.log(ngx.INFO, "Authorization: " .. auth_header)
     end
 
