@@ -61,7 +61,7 @@ function M.auth(claim_specs, header_specs)
 
     -- require Bearer token
     local token;
-    if authTokenPrefix ~= nil then
+    if authTokenPrefix ~= nil and authTokenPrefix ~= "" then
         local _
         _, _, token = string.find(auth_header, authTokenPrefix .. "%s+(.+)")
     else
