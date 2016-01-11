@@ -39,4 +39,5 @@ touch /etc/vagrant-provisioned
 if [ -e "/vagrant/build" ];
 then
   cp -R /vagrant nginx-jwt
+  chown -R vagrant:vagrant nginx-jwt
 fi
