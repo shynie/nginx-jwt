@@ -20,6 +20,9 @@
 * Secure an existing HTTP service (ex: REST API) using Nginx reverse-proxy and this script
 * Authenticate an HTTP request with the verified identity contained with in a JWT
 * Optionally, authorize the same request using helper functions for asserting required JWT claims
+* Optionally, set authorization header prefix
+* Optionally, set headers on downstream services
+* Optionally, turn on logging
 
 ## Install
 
@@ -27,7 +30,7 @@
 
 Install steps:
 
-1. Download the latest archive package from [releases](https://github.com/auth0/nginx-jwt/releases).
+1. Download the latest archive package from [releases](https://github.com/platinummonkey/nginx-jwt/releases).
 1. Extract the archive and deploy its contents to a directory on your Nginx server.
 1. Specify this directory's path using ngx_lua's [lua_package_path](https://github.com/openresty/lua-nginx-module#lua_package_path) directive:  
     ```lua
@@ -43,17 +46,15 @@ Install steps:
 
 > At the moment, `nginx-jwt` only supports symmetric keys (`alg` = `hs256`), which is why you need to configure your server with the shared JWT secret below.
 
-1. Export the `JWT_SECRET` environment variable on the Nginx host, setting it equal to your JWT secret.  Then expose it to Nginx server:  
+1. Export the environment variables on the Nginx host.  Then expose it to Nginx server:  
     ```lua
     # nginx.conf:
 
-    env JWT_SECRET;
-    ```
-1. If your JWT secret is Base64 (URL-safe) encoded, export the `JWT_SECRET_IS_BASE64_ENCODED` environment variable on the Nginx host, setting it equal to `true`.  Then expose it to Nginx server:  
-    ```lua
-    # nginx.conf:
-
-    env JWT_SECRET_IS_BASE64_ENCODED;
+    env JWT_SECRET;                    # Your JWT secret. No default
+    env JWT_SECRET_IS_BASE64_ENCODED;  # Indicate if this secret is base64 encoded already. Default is false
+    env AUTHORIZATION_HEADER;          # The Authorization header to look for. ie: "Authorization: ".  Default is "Authorization"
+    env AUTHORIZATION_PREFIX;          # The Authorization prefix to look for: ie. "Bearer "  - (example: "Authorization: Bearer abcdefgh12345...".  Default is "Bearer"
+    env LOG_TOKEN;                     # Optionally enable logging of the token for debugging. Default is false.
     ```
 
 ## Usage
@@ -456,7 +457,7 @@ When a new version of the script needs to be released, the following should be d
   ```
 
 1. Push the tag to GitHub.
-1. Create a new GitHub release in [releases](https://github.com/auth0/nginx-jwt/releases) that's associated with the above tag.
+1. Create a new GitHub release in [releases](https://github.com/platinummonkey/nginx-jwt/releases) that's associated with the above tag.
 1. Run the following command to create a release package archive and then upload it to the release created above:  
 
   ```bash
@@ -470,7 +471,7 @@ If you have found a bug or if you have a feature request, please report them at 
 
 ## Contributors
 
-Check them out [here](https://github.com/auth0/nginx-jwt/graphs/contributors).
+Check them out [here](https://github.com/platinummonkey/nginx-jwt/graphs/contributors).
 
 ## License
 
