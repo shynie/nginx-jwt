@@ -18,10 +18,11 @@ hostname $host
 
 # Install core components
 apt-get update
-apt-get install -y make g++ curl git vim nfs-common portmap build-essential libssl-dev
+apt-get install -y make g++ curl git vim nfs-common portmap build-essential libssl-dev jq
 
 # Install Node.js
-curl --silent --location https://deb.nodesource.com/setup_0.12 | sudo bash -
+#curl --silent --location https://deb.nodesource.com/setup_0.12 | sudo bash -
+curl --silent --location https://deb.nodesource.com/setup_5.x | sudo bash -
 apt-get install --yes nodejs
 
 # Install Docker

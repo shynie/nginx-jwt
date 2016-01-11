@@ -10,7 +10,7 @@ app.get('/', function (req, res) {
 
 app.get('/secure', function (req, res) {
     console.log('Authorization header:', req.get('Authorization'));
-
+    res.setHeader("X-Auth-UserId", req.get("X-Auth-UserId"))
     res.json({
         message: 'This endpoint needs to be secure.'
     });
@@ -18,7 +18,7 @@ app.get('/secure', function (req, res) {
 
 app.get('/secure/admin', function (req, res) {
     console.log('Authorization header:', req.get('Authorization'));
-
+    res.setHeader("X-Auth-UserId", req.get("X-Auth-UserId"))
     res.json({
         message: 'This endpoint needs to be secure for an admin.'
     });
