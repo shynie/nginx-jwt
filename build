@@ -45,7 +45,7 @@ if [[ "$command" == "package" ]]; then
     rm $archive
     fi
 
-    tar cvf $archive ./nginx-jwt.lua
+    tar cxvf $archive ./nginx-jwt.lua
     tar rvf $archive ./version.txt
     cd lib/
     tar rvf ../$archive ./
