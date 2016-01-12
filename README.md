@@ -1,5 +1,7 @@
 # JWT Auth for Nginx
 
+[![Build Status](https://travis-ci.org/platinummonkey/nginx-jwt.svg?branch=master)](https://travis-ci.org/platinummonkey/nginx-jwt)
+
 **nginx-jwt** is a [Lua](http://www.lua.org/) script for the [Nginx](http://nginx.org/) server (running the [HttpLuaModule](http://wiki.nginx.org/HttpLuaModule)) that will allow you to use Nginx as a reverse proxy in front of your existing set of HTTP services and secure them (authentication/authorization) using a trusted [JSON Web Token (JWT)](http://jwt.io/) in the `Authorization` request header, having to make little or no changes to the backing services themselves.
 
 ## Contents
