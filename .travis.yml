@@ -10,7 +10,7 @@ services:
 
 before_install:
   - bash ./build run
-  - npm install
+  - cd test; npm install
 
 script:
-  - PROXY_HOST=localhost npm test
+  - cd test; PROXY_HOST=localhost npm test
