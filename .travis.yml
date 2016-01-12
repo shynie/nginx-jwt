@@ -1,0 +1,16 @@
+sudo: required
+
+languange: node_js
+
+node_js:
+  - "5.4"
+
+services:
+  - docker
+
+before_install:
+  - bash ./build run
+  - npm install
+
+script:
+  - PROXY_HOST=localhost npm test
