@@ -43,10 +43,9 @@ if os.getenv("JWT_SECRET_IS_BASE64_ENCODED") == 'true' then
     secret = basexx.from_base64(secret)
 end
 
-local M = {}
 
-function M.auth(claim_specs, header_specs)
-
+-- Helper Funtions
+function get_token()
     -- require Authorization request header
     local auth_header = ngx.req.get_headers()[authHeader]
 
@@ -77,6 +76,10 @@ function M.auth(claim_specs, header_specs)
         ngx.log(ngx.INFO, "Token: " .. token)
     end
 
+    return token
+end
+
+function validate_jwt(token)
     -- require valid JWT
     local jwt_obj = jwt:verify(secret, token, 0)
     if jwt_obj.verified == false then
@@ -87,6 +90,18 @@ function M.auth(claim_specs, header_specs)
     if (logToken ~= false) then
         ngx.log(ngx.INFO, "JWT: " .. cjson.encode(jwt_obj))
     end
+
+    return jwt_obj
+end
+
+
+-- Returned Class
+local M = {}
+
+function M.auth(claim_specs, header_specs)
+
+    local token         = get_token()
+    local jwt_obj       = validate_jwt(token)
 
     -- optionally require specific claims
     if claim_specs ~= nil then
@@ -195,6 +210,13 @@ function M.auth(claim_specs, header_specs)
             ngx.exit(ngx.HTTP_UNAUTHORIZED)
         end
     end
+end
+
+function M.get_payload()
+    local token     = get_token()
+    local jwt_obj   = validate_jwt(token)
+
+    return jwt_obj.payload
 end
 
 function M.table_contains(table, item)
