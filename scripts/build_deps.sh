@@ -14,7 +14,9 @@ load_dependency () {
     local commit="$4"
     local required_sha1="$5"
 
-    local actual_sha1=$(cat $target | openssl sha1 | sed 's/^.* //')
+    if [ -e "$target" ]; then
+        local actual_sha1=$(cat $target | openssl sha1 | sed 's/^.* //')
+    fi
 
     if [ -e "$target" ] && [ "$required_sha1" == "$actual_sha1" ]; then
         echo -e "Dependency $target (with SHA-1 digest $required_sha1) already downloaded."
