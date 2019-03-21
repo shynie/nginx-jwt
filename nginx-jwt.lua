@@ -89,7 +89,7 @@ end
 
 function validate_jwt(token)
     -- require valid JWT
-    local jwt_obj = jwt:verify(secret, token, 0)
+    local jwt_obj = jwt:verify(secret, token)
     if jwt_obj.verified == false then
         ngx.log(ngx.WARN, "Invalid token: ".. jwt_obj.reason)
         ngx.exit(ngx.HTTP_UNAUTHORIZED)
