@@ -16,6 +16,14 @@ end
 
 local secret = os.getenv("JWT_SECRET")
 
+local secret_file = os.getenv("JWT_SECRET_FILE")
+if secret_file ~= nil then
+    local f = io.open(secret_file, "rb")
+    secret = f:read("*all")
+    f:close()
+end
+
+
 local authHeader = os.getenv("AUTHORIZATION_HEADER")
 if authHeader == "" or authHeader == nil then
     authHeader = "Authorization"
@@ -26,7 +34,7 @@ if authTokenPrefix == nil then
     authTokenPrefix = "Bearer"
 end
 
-assert(secret ~= nil, "Environment variable JWT_SECRET not set")
+assert(secret ~= nil, "No JWT secret is set")
 
 if os.getenv("JWT_SECRET_IS_BASE64_ENCODED") == 'true' then
     -- convert from URL-safe Base64 to Base64
